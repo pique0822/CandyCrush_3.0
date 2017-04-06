@@ -1,0 +1,559 @@
+<!--
+CandyCrush
+Your Name: Miguel Del Rio
+Collaborators: None
+-->
+<!DOCTYPE html>
+<html>
+<!--
+/* Copyright (c) 2017 MIT 6.813/6.831 course staff, all rights reserved.
+ * Redistribution of original or derived work requires permission of course staff.
+ */
+-->
+
+<head>
+<meta charset="utf-8">
+<title>CandyCrush</title>
+
+<!-- Load style sheets -->
+<link rel="stylesheet" href=
+  "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.css">
+
+<link rel="stylesheet" href="mainLayout.css">
+
+<!-- Use mobile-aware viewport -->
+<meta name="viewport" content=
+  "width=device-width, initial-scale=1, shrink-to-fit=no">
+
+<!-- Load any supplemental Javascript libraries here -->
+<script src=
+  "https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<script src=
+  "https://cdnjs.cloudflare.com/ajax/libs/seedrandom/2.4.2/seedrandom.js">
+</script>
+<script src="candy.js"></script>
+<script src="board.js"></script>
+<script src="rules.js"></script>
+
+<script>
+
+// By default, the first board loaded by your page will be the same
+// each time you load (which is accomplished by "seeding" the random
+// number generator. This makes testing (and grading!) easier!
+Math.seedrandom(0);
+
+
+// A short jQuery extension to read query parameters from the URL.
+$.extend({
+  getUrlVars: function() {
+    var vars = [], pair;
+    var pairs = window.location.search.substr(1).split('&');
+    for (var i = 0; i < pairs.length; i++) {
+      pair = pairs[i].split('=');
+      vars.push(pair[0]);
+      vars[pair[0]] = pair[1] &&
+          decodeURIComponent(pair[1].replace(/\+/g, ' '));
+    }
+    return vars;
+  },
+  getUrlVar: function(name) {
+    return $.getUrlVars()[name];
+  }
+});
+
+// constants
+var DEFAULT_BOARD_SIZE = 8;
+//The indices of the chars will correspond to the rows
+var ROW_TO_LETTERS = [];
+//The 320 is because of the size of the table element we used in the HTML
+var BOARD_WIDTH = 320;
+var CELL_SIZE = (BOARD_WIDTH/8);
+
+// data model at global scope for easier debugging
+var board;
+var rules;
+//states whether an arrow is on the screen
+var arrowOn = false;
+//States whether two element is being dragged
+var isBeingDragged = false;
+var candyDragged = null;
+//Used to determine if a move is valid when the candy is let go
+var isNeighborCandy = false;
+
+// initialize board
+if ($.getUrlVar('size') && $.getUrlVar('size') >= 3) {
+  board = new Board($.getUrlVar('size'));
+  CELL_SIZE = (BOARD_WIDTH/$.getUrlVar('size'));
+} else {
+  board = new Board(DEFAULT_BOARD_SIZE);
+}
+
+
+// load a rule
+rules = new Rules(board);
+
+// Final initialization entry point: the Javascript code inside this block
+// runs at the end of start-up when the page has finished loading.
+$(document).ready(function()
+{
+  // Your code here.
+  $('#showMoveTable').css('z-index',-1);
+  console.log('new user');
+  $('#mainColumn').children().hide(350);
+  setTimeout(function(){
+    newBoard();
+  },200);
+
+});
+
+
+var newBoard = function()
+{
+  setTimeout(function(){
+    $('#mainColumn').children().show(400);
+    setTimeout(function(){
+      $('#newGame').removeAttr("disabled");
+    },400);
+  }, 450);
+  $('#score').css('color','black');
+  $('#score').css('background-color','white');
+  $('#score').html(0 + " points");
+
+  rules.prepareNewGame();
+
+
+}
+//This will choose the appropriate image based on the color of the candy.
+var getCandyImage = function(color)
+{
+  switch(color+""){
+    case 'yellow':
+      var img = new Image();
+      img.src = 'graphics/yellow-candy.png';
+      return img;
+    case 'blue':
+      var img = new Image();
+      img.src = 'graphics/blue-candy.png';
+      return img;
+    case 'red':
+      var img = new Image();
+      img.src = 'graphics/red-candy.png';
+      return img;
+    case 'green':
+      var img = new Image();
+      img.src = 'graphics/green-candy.png';
+      return img;
+    case 'purple':
+      var img = new Image();
+      img.src = 'graphics/purple-candy.png';
+      return img;
+    case 'orange':
+      var img = new Image();
+      img.src = 'graphics/orange-candy.png';
+      return img;
+  }
+}
+
+//This will create a new image with the correct properties for
+// the board and candy
+var setupNewImage = function(candy, row, col)
+{
+  //removeImage(candy);
+  var gameTable = $('#gameTable');
+  var img = getCandyImage(candy.color);
+  //var tableOffset = gameTable.offset();
+
+  var left =  col*CELL_SIZE;// + tableOffset.left;
+  var top = row*CELL_SIZE;// + tableOffset.top;
+
+  $(img).attr({
+    id: candy.id
+  });
+  $(img).on('dragstart', function(evt) {
+     evt.preventDefault();
+   });
+  $(img).css({
+    width: CELL_SIZE,
+    height: CELL_SIZE,
+    'z-index': 0,
+    position: 'absolute',
+    userSelect: 'none'
+  });
+  $(img).offset({
+    top: top,
+    left: left
+  });
+
+  return img;
+
+}
+
+/* Event Handlers */
+// access the candy object with info.candy
+
+// add a candy to the board
+$(board).on('add', function(e, info)
+{
+  // Your code here.
+  var toRow = info.toRow;
+  var toCol = info.toCol;
+  var candy = info.candy;
+  var fromRow = -1;
+  var fromCol = toCol;
+
+  if(candy != null)//This ensures that the add handler won't crash when the board is initialized.
+  {
+    var thisCandy = setupNewImage(candy,fromRow,fromCol);
+    var gameTable = $('#gameTable');
+    gameTable.append(thisCandy);//Adds the image to the table correcly
+
+    $(thisCandy).animate({//Animates the image
+      left: "+="+(toCol-fromCol)*CELL_SIZE,
+      top: "+="+(toRow-fromRow)*CELL_SIZE
+    },500,function(){
+      crushAll();//Removes all crushes caused by this
+    });
+  }
+});
+// move a candy on the board
+$(board).on('move', function(e, info)
+{
+   // Your code here.
+  var toRow = info.toRow;
+  var toCol = info.toCol;
+  var fromRow = info.fromRow;
+  var fromCol = info.fromCol;
+  var canvasPos = $('#gameTable').offset();
+  thisCandy = board.getCandyAt(toRow,toCol);
+  var thisId = '#' + thisCandy.id;
+  otherCandy = board.getCandyAt(fromRow,fromCol);
+  toRow = toRow*CELL_SIZE;
+  toCol = toCol*CELL_SIZE;
+  fromRow = fromRow*CELL_SIZE;
+  fromCol = fromCol*CELL_SIZE;
+
+
+  if(thisCandy == candyDragged)
+  {
+    currentRow = $(thisId).position().top;// + canvasPos.top;
+    currentCol = $(thisId).position().left;// + canvasPos.left;
+
+    fromRow = currentRow;
+    fromCol = currentCol;
+  }
+
+  if(otherCandy != null)//This is only false when a candy has just been crushed and has moved in the board but not visualy
+  {
+    var otherId = '#' + otherCandy.id;
+    $(thisId).animate({
+      left: "+="+(toCol-fromCol),
+      top: "+="+(toRow-fromRow)
+    },500, function(){
+      if(!$(thisId).is(':animated') && !$(otherId).is(':animated'))//This is only true once both the moving pieces are
+      {                                                // done. This is necessary to prevent one piece moving
+        crushAll();
+        isNeighborCandy = false;
+      }
+    });
+  } else if(otherCandy == null) {
+    $(thisId).animate({
+      left: "+="+(toCol-fromCol),
+      top: "+="+(toRow-fromRow)
+    },500, function(){
+      crushAll();
+      isNeighborCandy = false;
+    });
+  }
+
+});
+
+
+// remove a candy from the board
+$(board).on('remove', function(e, info)
+{
+
+  // Your code here.
+  var row = info.fromRow;
+  var col = info.fromCol;
+  //this is the cell that the candy will move into
+  var id = '#'+info.candy.id;
+  if(rules.isSetup())//This is true only if the game is ready. Crushes from here on will animate
+  {
+    $(id).animate({
+      opacity: 0
+    },500);
+  }
+  else {//This is only for when the board hasn't initiallized visually and accidental crushes should be removed asap
+    $(id).promise().done(function(){
+      $(id).remove();
+    });
+  }
+});
+
+// move a candy on the board
+$(board).on('scoreUpdate', function(e, info)
+{
+  // Your code here. To be implemented in pset 2.
+
+  //Gets candy color
+  var candy = info.candy;
+  var yellow = Candy.colors[1];
+  if(candy != null)//Ensures candy is not null
+  {
+    if(candy.color == yellow)//Checks the color if it's yellow
+    {
+      $('#score').css('color','#d1d1d1');//This allows the text on the yellow to be readable
+    }
+    else{
+      $('#score').css('color','white');
+    }
+    $('#score').css('background-color',candy.color);
+    $('#score').html(info.score + " points");
+  }
+});
+
+// Button Events
+$(document).on('click', "#newGame", function(evt)
+{
+  // Your code here.
+  //First we have to clear the table
+  board.clear();
+  //Now we can make a new board
+
+  $('#newGame').attr("disabled", true);
+  $('#mainColumn').children().hide(350);
+  setTimeout(function(){
+    newBoard();
+  },200);
+
+});
+//This method is a helper method for all arrow inputs so that candies can move.
+var makeMove = function(row,col,direction)
+{
+  if(row>=0 && col>=0)//This is to prevent invalid input going into the getCandy method
+  {
+    var thisCandy = board.getCandyAt(row,col);
+
+    if(rules.isMoveTypeValid(thisCandy,direction)){//If the move is good
+      var otherCandy = board.getCandyInDirection(thisCandy,direction);
+      board.flipCandies(thisCandy,otherCandy);
+      reset();//Returns the arrow keys to disabled
+    }
+  }
+}
+
+//This will look for clicks to see what row is clicked on the game board.
+//When a click is made, the board will return to the back since it is no longer needed
+var findRowFromClick = function(y){
+  var canvasPos = $('#gameTable').offset();
+  var row = Math.floor(Math.abs(y- canvasPos.top)/CELL_SIZE);
+  return row;
+}
+
+//This will look for clicks to see what col is clicked on the game board.
+//When a click is made, the board will return to the back since it is no longer needed
+var findColFromClick = function(x){
+  var canvasPos = $('#gameTable').offset();
+  var col = Math.floor(Math.abs(x- canvasPos.left)/CELL_SIZE);
+  return col;
+}
+
+
+$(document).on('mousedown','#gameTable',function(evt)
+{
+    isBeingDragged = true;
+    var text = ROW_TO_LETTERS[row] + (col+1);
+    var row = findRowFromClick(evt.pageY);
+    var col = findColFromClick(evt.pageX);
+    var thisCandy = board.getCandyAt(row,col);
+    candyDragged = thisCandy;
+    var id = '#'+thisCandy.id;
+    $(id).css({'z-index':10});
+    $('#cellMoving').val(text);//sets the textbox to have the correct
+    reset();
+});
+
+$(document).on('mousemove','#gameTable',function(evt){
+  if(isBeingDragged)
+  {
+    var canvasPos = $('#showMoveTable').offset();
+    var id = '#'+candyDragged.id;
+    $(id).animate({
+      top: evt.pageY - canvasPos.top - CELL_SIZE/2,
+      left: evt.pageX - canvasPos.left - CELL_SIZE/2
+    },1)
+  }
+});
+
+$(document).on('mouseup','#gameTable',function(evt){
+  var row = findRowFromClick(evt.pageY);
+  var col = findColFromClick(evt.pageX);
+  var flippedCandy = board.getCandyAt(row,col);
+
+  deltaRow = (row - candyDragged.row);
+  deltaCol = (col - candyDragged.col);
+
+  direction = 'none';
+  if(deltaRow == -1 && deltaCol == 0)
+    direction = 'up'
+  else if(deltaRow == 1 && deltaCol == 0)
+    direction = 'down'
+  else if(deltaCol == -1 && deltaRow == 0)
+    direction = 'left'
+  else if(deltaCol == 1 && deltaRow == 0)
+    direction = 'right'
+
+  isNeighborCandy = rules.isMoveTypeValid(candyDragged,direction);
+
+  if(isNeighborCandy)
+    board.flipCandies(candyDragged,flippedCandy);
+  else{
+    console.log('not neighbor');
+    var thisId = '#' + candyDragged.id;
+    var canvasPos = $('#gameTable').offset();
+    $(thisId).animate({
+      left: "+="+((canvasPos.left+candyDragged.col*CELL_SIZE)+CELL_SIZE/2-evt.pageX),
+      top: "+="+((canvasPos.top+candyDragged.row*CELL_SIZE)+CELL_SIZE/2-evt.pageY)
+    },500, function(){
+      if(!$(thisId).is(':animated'))//This is only true once both the moving pieces are
+      {                                                // done. This is necessary to prevent one piece moving
+        crushAll();
+        isNeighborCandy = false;
+      }
+    });
+  }
+
+  var id = '#'+candyDragged.id;
+  $(id).css({'z-index':0});
+  isBeingDragged = false;
+  candyDragged = null;
+});
+
+$(document).on('mousedown','#showMoveTable',function(evt)
+{
+    $('#showMoveTable').css('z-index',-1);
+    isBeingDragged = true;
+    var text = ROW_TO_LETTERS[row] + (col+1);
+    var row = findRowFromClick(evt.pageY);
+    var col = findColFromClick(evt.pageX);
+    var thisCandy = board.getCandyAt(row,col);
+    candyDragged = thisCandy;
+    var id = '#'+thisCandy.id;
+    $(id).css({'z-index':10});
+    reset();
+});
+
+//Removes all enabled classes from the arrow keys
+var reset = function()
+{
+  $('#showMoveTable').css({'z-index':-1});
+  var gameContext = $('#showMoveTable')[0].getContext('2d');
+  gameContext.clearRect(0,0,BOARD_WIDTH,BOARD_WIDTH);
+}
+
+
+
+var crushAll = function(){
+  while(rules.getCandyCrushes().length > 0){
+    rules.removeCrushes([rules.getCandyCrushes()[0]]);//This will remove one crush at a time instead of all at once.
+
+    setTimeout(function(){//Waits for 500ms
+      rules.moveCandiesDown();//First moves down candies
+    },500);
+  }
+}
+//Draws the arrows for show move
+$(document).on('click', "#showMove", function(evt){
+  reset();
+  var ARROW_SIZE = CELL_SIZE * .75;
+  var ARROW_SHIFT = ARROW_SIZE/10;
+  var CELL_SHIFT = CELL_SIZE/2;
+  var move = rules.getRandomValidMove();
+  var gameContext = $('#showMoveTable')[0].getContext('2d');
+  $('#showMoveTable').css('z-index',1);
+  gameContext.beginPath();
+  var col = move.candy.col;
+  var row = move.candy.row;
+  switch(move.direction){
+    case 'left':
+      var img = new Image();
+      img.onload = function()
+      {
+        gameContext.drawImage(this,col*CELL_SIZE - ARROW_SHIFT - CELL_SHIFT,row*CELL_SIZE + ARROW_SHIFT,ARROW_SIZE,ARROW_SIZE);
+      }
+      img.src = 'graphics/left_arrow.png';
+      break;
+    case 'right':
+      var img = new Image();
+      img.onload = function()
+      {
+        gameContext.drawImage(this,col*CELL_SIZE + ARROW_SHIFT + CELL_SHIFT,row*CELL_SIZE,ARROW_SIZE,ARROW_SIZE);
+      }
+      img.src = 'graphics/right_arrow.png';
+      break;
+    case 'down':
+      var img = new Image();
+      img.onload = function()
+      {
+        gameContext.drawImage(this,col*CELL_SIZE + ARROW_SHIFT,row*CELL_SIZE + CELL_SHIFT + ARROW_SHIFT,ARROW_SIZE,ARROW_SIZE);
+      }
+      img.src = 'graphics/down_arrow.png';
+      break;
+    case 'up':
+      var img = new Image();
+      img.onload = function()
+      {
+        gameContext.drawImage(this,col*CELL_SIZE + ARROW_SHIFT,row*CELL_SIZE - CELL_SHIFT - ARROW_SHIFT,ARROW_SIZE,ARROW_SIZE);
+      }
+      img.src = 'graphics/up_arrow.png';
+      break;
+  }
+  arrowOn = true;
+});
+
+
+</script>
+
+
+</head>
+
+<body>
+
+<div class="container">
+  <div class="row">
+    <div class="col-md-3 vertical-center" id="firstColumn">
+      <div>
+      <!-- Column 1 Code Here -->
+        <div class="col-sm-8 offset-sm-2">
+          <div class="row col-center">
+            <h1 class="title bold text-center">Candy Crush</h1>
+          </div>
+          <div class="row col-center">
+            <h3 id="score">0 points<h1>
+          </div>
+          <div class="row col-center">
+            <input id="newGame" type="button" class="btn btn-crushes form-control" value="New Game">
+          </div>
+          <div class="row col-center">
+            <input id="showMove" type="button" class="btn btn-crushes form-control" value="Show Move">
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="col-md-6 vertical-center" id="mainColumn">
+      <!-- Column 2 Code Here -->
+      <div class="row col-center">
+        <div class="candyTable" id="gameTable" width=320 height=320></div>
+        <canvas width=320 height=320 class="candyTable" id="showMoveTable"></canvas>
+      </div>
+    </div>
+      <!-- Column 3 Code Here -->
+
+  </div> <!-- class="row" -->
+</div> <!-- class="container" -->
+
+</body>
+
+</html>

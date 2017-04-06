@@ -1,0 +1,124 @@
+/* Copyright (c) 2017 MIT 6.813/6.831 course staff, all rights reserved.
+ * Redistribution of original or derived work requires permission of course staff.
+ */
+
+/* REMOVE ME - dashed lines and height for debugging */
+/*
+#mainColumn {
+  outline: 1px dashed orange;
+}
+
+#firstColumn {
+  outline: 1px dashed green;
+}
+
+#lastColumn {
+  outline: 1px dashed blue;
+}
+*/
+
+/* Your css code here! */
+.title{
+  color: #ff3200;
+}
+
+.bold {
+  font-weight: bold;
+}
+
+.col-center{
+  margin: 0 auto;
+}
+
+.vertical-center {
+  min-height: 100%;
+  min-height: 100vh;
+
+  display: flex;
+  align-items: center;
+}
+
+#gameTable {
+  border-spacing: 5px;
+  outline: 1px dashed orange;
+}
+
+.candy {
+  text-align: center;
+  border: 1px solid #A0A0A0;
+  font-size: 1vw;
+}
+
+.yellowCandy {
+  color: #A0A0A0;
+}
+
+.otherCandy {
+  color: white;
+}
+
+.emptyCandy {
+  color: black;
+}
+
+#cell {
+  font-size: 32px;
+}
+
+#score {
+  text-align: center;
+  color: black;
+  background-color: white;
+  width: 100%;
+  border-radius: 5px;
+}
+
+.key {
+  width: 60px;
+  border: 1px solid white;
+  border-radius: 10px;
+}
+
+.arrow-disabled {
+  background-color: #CBD0D8;
+  text-align: center;
+  color: gray;
+  cursor: not-allowed;
+}
+
+.arrow-enabled {
+  background-color: blue;
+  text-align: center;
+  color: white;
+  cursor: default;
+}
+
+.btn-crushes {
+  background-color: blue;
+  color: white;
+  text-align: center;
+}
+
+.btn-crushes:disabled{
+  background-color: #CBD0D8;
+  color:gray;
+  cursor:not-allowed;
+  text-align: center;
+}
+
+.btn-crushes:focus {
+  background-color: blue;
+  color: white;
+  cursor:default;
+  text-align: center;
+}
+
+.empty {
+  background-color: white;
+}
+
+.candyTable {
+  position: absolute;
+  left: 20%;
+  top: 28%;
+}
