@@ -373,7 +373,7 @@ $(document).on('mousedown','#gameTable',function(evt)
     reset();
 });
 
-$(document).on('mousemove','#gameTable',function(evt){
+$(document).on('mousemove','body',function(evt){
   if(isBeingDragged)
   {
     var canvasPos = $('#showMoveTable').offset();
