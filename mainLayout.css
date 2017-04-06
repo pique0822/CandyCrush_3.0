@@ -38,11 +38,6 @@
   align-items: center;
 }
 
-#gameTable {
-  border-spacing: 5px;
-  outline: 1px dashed orange;
-}
-
 .candy {
   text-align: center;
   border: 1px solid #A0A0A0;
