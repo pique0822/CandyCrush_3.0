@@ -385,7 +385,7 @@ $(document).on('mousemove','body',function(evt){
   }
 });
 
-$(document).on('mouseup','#gameTable',function(evt){
+$(document).on('mouseup','body',function(evt){
   var row = findRowFromClick(evt.pageY);
   var col = findColFromClick(evt.pageX);
   var flippedCandy = board.getCandyAt(row,col);
